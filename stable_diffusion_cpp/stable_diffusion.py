@@ -430,54 +430,54 @@ class StableDiffusion:
             )
 
         # # Set a random seed if seed is negative
-        # if seed < 0:
-        #     seed = random.randint(0, 10000)
+        if seed < 0:
+             seed = random.randint(0, 10000)
 
         # # ==================== Set the callback function ====================
 
-        # if progress_callback is not None:
+        if progress_callback is not None:
 
-        #     @sd_cpp.sd_progress_callback
-        #     def sd_progress_callback(
-        #         step: int,
-        #         steps: int,
-        #         time: float,
-        #         data: ctypes.c_void_p,
-        #     ):
-        #         progress_callback(step, steps, time)
+             @sd_cpp.sd_progress_callback
+             def sd_progress_callback(
+                 step: int,
+                 steps: int,
+                 time: float,
+                 data: ctypes.c_void_p,
+             ):
+                 progress_callback(step, steps, time)
 
-        #     sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+             sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
 
         # # ==================== Resize the input image ====================
 
-        # image = self._resize_image(
-        #     image, width, height
-        # )  # Input image and generated image must have the same size
+        image = self._resize_image(
+             image, width, height
+        )  # Input image and generated image must have the same size
 
         # # ==================== Convert the image to a byte array ====================
 
-        # image_pointer = self._image_to_sd_image_t_p(image)
+        image_pointer = self._image_to_sd_image_t_p(image)
 
-        # c_video = sd_cpp.img2vid(
-        #     self.model,
-        #     image_pointer,
-        #     width,
-        #     height,
-        #     video_frames,
-        #     motion_bucket_id,
-        #     fps,
-        #     augmentation_level,
-        #     min_cfg,
-        #     cfg_scale,
-        #     sample_method,
-        #     sample_steps,
-        #     strength,
-        #     seed,
-        # )
+        c_video = sd_cpp.img2vid(
+            self.model,
+             image_pointer,
+             width,
+             height,
+             video_frames,
+             motion_bucket_id,
+             fps,
+             augmentation_level,
+             min_cfg,
+             cfg_scale,
+             sample_method,
+             sample_steps,
+             strength,
+             seed,
+         )
 
-        # return self._sd_image_t_p_to_images(c_video, video_frames, 1)
-        raise NotImplementedError("Not yet implemented.")
-
+         return self._sd_image_t_p_to_video(c_video, video_frames, 1)
+        #raise NotImplementedError("Not yet implemented.")
+    
     # ============================================
     # Preprocess Canny
     # ============================================
@@ -769,7 +769,23 @@ class StableDiffusion:
             )
 
         return images
+    def _sd_image_t_p_to_videos(self,,c_images, count, upscale_factor):
+    """Convert C sd_image_t_p images to a Python list of images."""
 
+    # Convert C array to Python list of images
+    images = self._image_slice(c_images, count, upscale_factor)
+
+    # Convert each image to PIL Image and then to a video frame
+    video_frames = []
+    for image_info in images:
+        pil_image = self._bytes_to_image(
+            image_info["data"], image_info["width"], image_info["height"]
+        )
+        # Convert PIL image to OpenCV image (BGR format)
+        cv_image = np.array(pil_image)[:, :, ::-1].copy()
+        video_frames.append(cv_image)
+
+    return video_frames
     # ============= Bytes to Image =============
 
     def _bytes_to_image(self, byte_data: bytes, width: int, height: int):
